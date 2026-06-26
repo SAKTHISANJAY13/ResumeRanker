@@ -1,0 +1,23 @@
+# Large dataset
+candidates.jsonl
+
+# Python
+__pycache__/
+*.py[cod]
+
+# macOS
+.DS_Store
+
+# Virtual environment
+venv/
+.env
+
+# VS Code
+.vscode/
+
+# Pytest cache
+.pytest_cache/
+
+# Build files
+build/
+dist/
