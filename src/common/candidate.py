@@ -1,4 +1,4 @@
-\"\"\"Common candidate profile models and data structures.\"\"\"
+"""Common candidate profile models and data structures."""
 
 from dataclasses import dataclass, field
 from datetime import date

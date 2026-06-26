@@ -1,1 +1,1 @@
-\"\"\"Scoring and calibration components for Stage-2.\"\"\"
+"""Scoring and calibration components for Stage-2."""

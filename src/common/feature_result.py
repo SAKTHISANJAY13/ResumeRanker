@@ -1,11 +1,11 @@
-\"\"\"Common definitions for candidate feature extraction results.\"\"\"
+"""Common definitions for candidate feature extraction results."""
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Any
 
 @dataclass(frozen=True)
 class ExperienceFeatures:
-    \"\"\"Feature scores/metrics related to candidate's career history.\"\"\"
+    """Feature scores/metrics related to candidate's career history."""
     years_of_experience: float = 0.0
     num_jobs: int = 0
     average_tenure_months: float = 0.0
@@ -15,7 +15,7 @@ class ExperienceFeatures:
 
 @dataclass(frozen=True)
 class SkillsFeatures:
-    \"\"\"Feature scores/metrics related to candidate's skillset.\"\"\"
+    """Feature scores/metrics related to candidate's skillset."""
     matched_skills_count: int = 0
     expert_skills_count: int = 0
     unmatched_skills_count: int = 0
@@ -24,7 +24,7 @@ class SkillsFeatures:
 
 @dataclass(frozen=True)
 class JdAlignmentFeatures:
-    \"\"\"Feature scores/metrics measuring similarity with the Job Description.\"\"\"
+    """Feature scores/metrics measuring similarity with the Job Description."""
     headline_similarity: float = 0.0
     summary_similarity: float = 0.0
     title_alignment_score: float = 0.0
@@ -33,7 +33,7 @@ class JdAlignmentFeatures:
 
 @dataclass(frozen=True)
 class BehavioralFeatures:
-    \"\"\"Feature scores/metrics evaluating career behavior/activity.\"\"\"
+    """Feature scores/metrics evaluating career behavior/activity."""
     job_hopping_index: float = 0.0       # Risk of short stints
     profile_completeness: float = 0.0
     connection_score: float = 0.0
@@ -41,7 +41,7 @@ class BehavioralFeatures:
 
 @dataclass(frozen=True)
 class LocationFeatures:
-    \"\"\"Feature scores/metrics checking geo-proximity and work modes.\"\"\"
+    """Feature scores/metrics checking geo-proximity and work modes."""
     is_exact_location_match: bool = False
     is_country_match: bool = False
     willing_to_relocate: bool = False
@@ -49,7 +49,7 @@ class LocationFeatures:
 
 @dataclass(frozen=True)
 class AnomalyFeatures:
-    \"\"\"Feature scores/metrics identifying potential inconsistencies.\"\"\"
+    """Feature scores/metrics identifying potential inconsistencies."""
     overlapping_dates_detected: bool = False
     invalid_start_end_sequence: bool = False
     high_frequency_job_swaps: bool = False
@@ -57,7 +57,7 @@ class AnomalyFeatures:
 
 @dataclass(frozen=True)
 class CandidateFeatureResult:
-    \"\"\"Aggregates all extracted feature sets for a single candidate.\"\"\"
+    """Aggregates all extracted feature sets for a single candidate."""
     candidate_id: str
     experience: ExperienceFeatures = field(default_factory=ExperienceFeatures)
     skills: SkillsFeatures = field(default_factory=SkillsFeatures)

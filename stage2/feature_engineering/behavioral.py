@@ -1,10 +1,11 @@
-\"\"\"Behavioral feature engineering module for Stage-2 reranking.\"\"\"
+"""Behavioral feature engineering module for Stage-2 reranking."""
 
 import math
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Dict, Any, Optional
 from src.utils.logger import Logger
+from stage2.feature_engineering.base import BaseFeatureExtractor
 
 # Try importing the Stage-2 configurations; fall back to defaults if not yet generated
 try:
@@ -35,7 +36,7 @@ MAX_INACTIVITY_DAYS = 180.0
 
 @dataclass(frozen=True)
 class BehavioralFeatureResult:
-    \"\"\"Normalized behavioral engagement metrics for a candidate.\"\"\"
+    """Normalized behavioral engagement metrics for a candidate."""
     last_active_score: float
     github_score: float
     response_rate_score: float
@@ -47,14 +48,14 @@ class BehavioralFeatureResult:
     overall_behavioral_score: float
 
 
-class BehavioralFeatureExtractor:
-    \"\"\"Extracts and normalizes behavioral metrics into standard [0, 1] signals.\"\"\"
+class BehavioralFeatureExtractor(BaseFeatureExtractor):
+    """Calculates a unified behavioral score representing candidate engagement/demand."""
 
     def __init__(self) -> None:
         self.weights = BEHAVIORAL_WEIGHTS
 
     def _parse_date(self, date_str: Any) -> Optional[date]:
-        \"\"\"Parses candidate activity date strings into datetime.date objects.\"\"\"
+        """Parses candidate activity date strings into datetime.date objects."""
         if not date_str:
             return None
         if isinstance(date_str, date):
@@ -71,10 +72,10 @@ class BehavioralFeatureExtractor:
         return None
 
     def _normalize_last_active(self, last_active_str: Optional[str]) -> float:
-        \"\"\"Normalizes last active date into a recency score between 0.0 and 1.0.
+        """Normalizes last active date into a recency score between 0.0 and 1.0.
         
         Recent activity (<= 7 days) gets 1.0. Inactivity >= 180 days gets 0.0.
-        \"\"\"
+        """
         last_active_date = self._parse_date(last_active_str)
         if not last_active_date:
             return 0.0
@@ -90,7 +91,7 @@ class BehavioralFeatureExtractor:
         return float(1.0 - ((days_inactive - MIN_INACTIVITY_DAYS) / range_size))
 
     def _normalize_github(self, score: Any) -> float:
-        \"\"\"Normalizes Github activity score (0-100) to 0.0-1.0. Maps -1 (no account) to 0.0.\"\"\"
+        """Normalizes Github activity score (0-100) to 0.0-1.0. Maps -1 (no account) to 0.0."""
         try:
             val = float(score)
             if val < 0.0:
@@ -100,7 +101,7 @@ class BehavioralFeatureExtractor:
             return 0.0
 
     def _normalize_response_rate(self, rate: Any) -> float:
-        \"\"\"Standard response rate is already 0.0 to 1.0.\"\"\"
+        """Standard response rate is already 0.0 to 1.0."""
         try:
             val = float(rate)
             return float(max(0.0, min(val, 1.0)))
@@ -108,7 +109,7 @@ class BehavioralFeatureExtractor:
             return 0.0
 
     def _normalize_offer_rate(self, rate: Any) -> float:
-        \"\"\"Normalizes offer acceptance rate (-1 to 1) to 0.0-1.0 range. Maps -1 to 0.0.\"\"\"
+        """Normalizes offer acceptance rate (-1 to 1) to 0.0-1.0 range. Maps -1 to 0.0."""
         try:
             val = float(rate)
             if val < 0.0:
@@ -118,7 +119,7 @@ class BehavioralFeatureExtractor:
             return 0.0
 
     def _normalize_notice_period(self, days: Any) -> float:
-        \"\"\"Normalizes notice period. Shorter notice is preferred (0 days = 1.0, 180 days = 0.0).\"\"\"
+        """Normalizes notice period. Shorter notice is preferred (0 days = 1.0, 180 days = 0.0)."""
         try:
             val = float(days)
             if val <= 0.0:
@@ -130,7 +131,7 @@ class BehavioralFeatureExtractor:
             return 0.0
 
     def _normalize_count(self, count: Any, max_val: float) -> float:
-        \"\"\"Log-scaled normalization for counts to reduce the impact of extreme outliers.\"\"\"
+        """Log-scaled normalization for counts to reduce the impact of extreme outliers."""
         try:
             val = float(count)
             if val <= 0.0:
@@ -142,7 +143,7 @@ class BehavioralFeatureExtractor:
             return 0.0
 
     def extract_features(self, candidate: Dict[str, Any]) -> BehavioralFeatureResult:
-        \"\"\"Extracts and normalizes behavioral metrics for a candidate profile.\"\"\"
+        """Extracts and normalizes behavioral metrics for a candidate profile."""
         candidate_id = candidate.get("candidate_id") or candidate.get("id") or "UNKNOWN"
         Logger.info(f"Extracting behavioral features for candidate {candidate_id}")
 

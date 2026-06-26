@@ -1,8 +1,9 @@
-\"\"\"Location and work mode compatibility feature engineering module for Stage-2.\"\"\"
+"""Location and work mode compatibility feature engineering module for Stage-2."""
 
 from dataclasses import dataclass
 from typing import Dict, List, Any, Optional
 from src.utils.logger import Logger
+from stage2.feature_engineering.base import BaseFeatureExtractor
 
 # Try importing the Stage-2 configurations; fall back to defaults if not yet generated
 try:
@@ -30,7 +31,7 @@ FULL_COMPATIBILITY_SCORE = 1.0
 
 @dataclass(frozen=True)
 class LocationFeatureResult:
-    \"\"\"Normalized location and availability metrics for a candidate.\"\"\"
+    """Normalized location and availability metrics for a candidate."""
     relocation_score: float
     preferred_city_score: float
     hybrid_preference_score: float
@@ -39,15 +40,15 @@ class LocationFeatureResult:
     overall_location_score: float
 
 
-class LocationFeatureExtractor:
-    \"\"\"Scores geo-proximity and work style preferences against job location specifications.\"\"\"
+class LocationFeatureExtractor(BaseFeatureExtractor):
+    """Scores geographic compatibility, relocation willingness, and work mode matching."""
 
     def __init__(self) -> None:
         self.weights = LOCATION_WEIGHTS
         self.target_cities = [city.lower().strip() for city in TARGET_CITIES]
 
     def _score_preferred_city(self, candidate_location: Optional[str]) -> float:
-        \"\"\"Determines if the candidate is currently in a target preferred city.\"\"\"
+        """Determines if the candidate is currently in a target preferred city."""
         if not candidate_location or not isinstance(candidate_location, str):
             return 0.0
             
@@ -58,12 +59,12 @@ class LocationFeatureExtractor:
         return 0.0
 
     def _score_relocation(self, willing_to_relocate: Any, is_local: bool) -> float:
-        \"\"\"Scores relocation willingness.
+        """Scores relocation willingness.
         
         If already local, relocation is a non-issue (score = 1.0).
         If not local but willing to relocate, score = 1.0.
         Otherwise, score = 0.0.
-        \"\"\"
+        """
         if is_local:
             return FULL_COMPATIBILITY_SCORE
             
@@ -73,7 +74,7 @@ class LocationFeatureExtractor:
         return 0.0
 
     def _score_work_modes(self, preferred_mode: Optional[str]) -> tuple[float, float]:
-        \"\"\"Scores hybrid and remote preferences based on candidate work mode choice.\"\"\"
+        """Scores hybrid and remote preferences based on candidate work mode choice."""
         if not preferred_mode or not isinstance(preferred_mode, str):
             return 0.0, 0.0
             
@@ -92,7 +93,7 @@ class LocationFeatureExtractor:
         return hybrid_score, remote_score
 
     def _score_notice_period(self, notice_days: Any) -> float:
-        \"\"\"Scores notice period constraint (0 days = 1.0, 180 days = 0.0).\"\"\"
+        """Scores notice period constraint (0 days = 1.0, 180 days = 0.0)."""
         try:
             val = float(notice_days)
             if val <= 0.0:
@@ -104,7 +105,7 @@ class LocationFeatureExtractor:
             return 0.0
 
     def extract_features(self, candidate: Dict[str, Any]) -> LocationFeatureResult:
-        \"\"\"Extracts and normalizes location and availability features for a candidate.\"\"\"
+        """Extracts and normalizes location and availability features for a candidate."""
         candidate_id = candidate.get("candidate_id") or candidate.get("id") or "UNKNOWN"
         Logger.info(f"Extracting location features for candidate {candidate_id}")
 

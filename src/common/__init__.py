@@ -1,4 +1,4 @@
-\"\"\"Common shared data models and types package.\"\"\"
+"""Common shared data models and types package."""
 
 from src.common.candidate import (
     CompanySize,

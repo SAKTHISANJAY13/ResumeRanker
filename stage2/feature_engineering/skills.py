@@ -1,9 +1,10 @@
-\"\"\"Skills feature engineering module for Stage-2 reranking.\"\"\"
+"""Skills feature engineering module for Stage-2 reranking."""
 
 import re
 from dataclasses import dataclass
 from typing import List, Dict, Set, Any, Optional
 from src.utils.logger import Logger
+from stage2.feature_engineering.base import BaseFeatureExtractor
 
 # Try importing the Stage-2 configurations; fall back to defaults if not yet generated
 try:
@@ -50,7 +51,7 @@ except ImportError:
 
 @dataclass(frozen=True)
 class SkillsFeatureResult:
-    \"\"\"Advanced skills features computed for a candidate profile.\"\"\"
+    """Advanced skills features computed for a candidate profile."""
     required_matched_count: int
     required_coverage_ratio: float
     preferred_matched_count: int
@@ -60,8 +61,8 @@ class SkillsFeatureResult:
     total_skills_count: int
 
 
-class SkillsFeatureExtractor:
-    \"\"\"Normalizes and groups candidate skills into semantic buckets.\"\"\"
+class SkillsFeatureExtractor(BaseFeatureExtractor):
+    """Normalizes and groups candidate skills into semantic buckets."""
 
     def __init__(self) -> None:
         # Lowercase the config groups for safe matching
@@ -72,7 +73,7 @@ class SkillsFeatureExtractor:
         self.penalty_skills = {s.lower().strip() for s in PENALTY_SKILLS}
 
     def _normalize(self, skill_name: str) -> str:
-        \"\"\"Normalizes white space and maps skill aliases to canonical terms.\"\"\"
+        """Normalizes white space and maps skill aliases to canonical terms."""
         if not skill_name:
             return ""
         # Convert to lowercase and clean punctuation except characters like +, # (C++, C#)
@@ -84,7 +85,7 @@ class SkillsFeatureExtractor:
         return self.alias_map.get(clean, clean)
 
     def extract_features(self, candidate: Dict[str, Any]) -> SkillsFeatureResult:
-        \"\"\"Extracts and categorizes skills features for a single candidate profile.\"\"\"
+        """Extracts and categorizes skills features for a single candidate profile."""
         candidate_id = candidate.get("candidate_id") or candidate.get("id") or "UNKNOWN"
         Logger.info(f"Extracting skills features for candidate {candidate_id}")
 

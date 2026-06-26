@@ -1,1 +1,1 @@
-\"\"\"Explainability components for Stage-2.\"\"\"
+"""Explainability components for Stage-2."""

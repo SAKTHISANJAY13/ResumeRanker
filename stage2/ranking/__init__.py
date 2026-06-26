@@ -1,1 +1,1 @@
-\"\"\"Ranking and tie-breaking components for Stage-2.\"\"\"
+"""Ranking and tie-breaking components for Stage-2."""

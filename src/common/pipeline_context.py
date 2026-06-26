@@ -1,11 +1,11 @@
-\"\"\"Common pipeline execution context definition.\"\"\"
+"""Common pipeline execution context definition."""
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Any, Optional
 
 @dataclass
 class JobDescriptionParsed:
-    \"\"\"Structured representation of the parsed target Job Description.\"\"\"
+    """Structured representation of the parsed target Job Description."""
     title: str = ""
     min_years_experience: float = 0.0
     max_years_experience: float = 0.0
@@ -16,7 +16,7 @@ class JobDescriptionParsed:
 
 @dataclass
 class PipelineExecutionStats:
-    \"\"\"Statistics collected during the Stage-2 reranking run.\"\"\"
+    """Statistics collected during the Stage-2 reranking run."""
     total_candidates_loaded: int = 0
     total_features_extracted: int = 0
     total_candidates_scored: int = 0
@@ -26,7 +26,7 @@ class PipelineExecutionStats:
 
 @dataclass
 class PipelineContext:
-    \"\"\"Shared context storing configuration, parsed JD, and runtime metrics.\"\"\"
+    """Shared context storing configuration, parsed JD, and runtime metrics."""
     job_description: JobDescriptionParsed = field(default_factory=JobDescriptionParsed)
     stats: PipelineExecutionStats = field(default_factory=PipelineExecutionStats)
     meta_info: Dict[str, Any] = field(default_factory=dict)

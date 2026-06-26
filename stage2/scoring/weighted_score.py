@@ -1,4 +1,4 @@
-\"\"\"Weighted scoring module for Stage-2 reranking.\"\"\"
+"""Weighted scoring module for Stage-2 reranking."""
 
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
@@ -23,9 +23,10 @@ except ImportError:
     # Production-grade fallback weights for the final scoring ensemble
     STAGE2_GLOBAL_WEIGHTS = {
         "experience": 0.25,
-        "skills": 0.30,
-        "alignment": 0.20,
-        "behavior": 0.15,
+        "skills": 0.25,
+        "alignment": 0.15,
+        "semantic": 0.15,
+        "behavior": 0.10,
         "location": 0.10,
         "penalty_multiplier": 0.05  # Multiplied by anomaly penalty score
     }
@@ -68,7 +69,7 @@ ALIGNMENT_MAX_BOUND = 25.0
 MAX_BONUS_SKILLS = 3.0
 
 class WeightedScorer:
-    \"\"\"Combines candidate feature results into a standardized, component-backed final score.\"\"\"
+    """Combines candidate feature results into a standardized, component-backed final score."""
 
     def __init__(self) -> None:
         self.global_weights = STAGE2_GLOBAL_WEIGHTS
@@ -77,7 +78,7 @@ class WeightedScorer:
         self.align_weights = ALIGNMENT_SUB_WEIGHTS
 
     def _score_experience(self, exp: ExperienceFeatureResult) -> float:
-        \"\"\"Scores experience dimension (combines target tenure fit and domain matches).\"\"\"
+        """Scores experience dimension (combines target tenure fit and domain matches)."""
         # 1. Target tenure suitability (JD optimal bounds: 4-10 years)
         tenure = exp.total_experience
         if OPTIMAL_EXP_MIN <= tenure <= OPTIMAL_EXP_MAX:
@@ -108,7 +109,7 @@ class WeightedScorer:
         return float(exp_score)
 
     def _score_skills(self, skills: SkillsFeatureResult) -> float:
-        \"\"\"Scores skills coverage and matching density.\"\"\"
+        """Scores skills coverage and matching density."""
         bonus_score = min(skills.bonus_matched_count / MAX_BONUS_SKILLS, 1.0)
         
         skills_score = (
@@ -120,7 +121,7 @@ class WeightedScorer:
         return float(max(0.0, min(skills_score, 1.0)))
 
     def _score_alignment(self, align: JdAlignmentFeatureResult) -> float:
-        \"\"\"Scores candidate's overall JD alignment fit across all semantic axes.\"\"\"
+        """Scores candidate's overall JD alignment fit across all semantic axes."""
         raw_score = (
             align.retrieval_fit * self.align_weights.get("retrieval_fit", 0.0) +
             align.ranking_fit * self.align_weights.get("ranking_fit", 0.0) +
@@ -142,15 +143,17 @@ class WeightedScorer:
         align: JdAlignmentFeatureResult,
         behavior: BehavioralFeatureResult,
         location: LocationFeatureResult,
-        anomaly: AnomalyFeatureResult
+        anomaly: AnomalyFeatureResult,
+        semantic_score: float = 0.0
     ) -> CandidateScore:
-        \"\"\"Orchestrates compilation of sub-scores and aggregates them into the final candidate rating.\"\"\"
+        """Orchestrates compilation of sub-scores and aggregates them into the final candidate rating."""
         Logger.info(f"Computing weighted score for candidate {candidate_id}")
 
         # Compute individual dimension scores (all normalized between 0.0 and 1.0)
         s_exp = self._score_experience(exp)
         s_skills = self._score_skills(skills)
         s_align = self._score_alignment(align)
+        s_semantic = semantic_score
         s_behavior = behavior.overall_behavioral_score
         s_location = location.overall_location_score
         
@@ -162,19 +165,22 @@ class WeightedScorer:
             s_exp * self.global_weights.get("experience", 0.0) +
             s_skills * self.global_weights.get("skills", 0.0) +
             s_align * self.global_weights.get("alignment", 0.0) +
+            s_semantic * self.global_weights.get("semantic", 0.0) +
             s_behavior * self.global_weights.get("behavior", 0.0) +
             s_location * self.global_weights.get("location", 0.0)
         )
 
-        # Apply negative penalty multiplier (deducted directly from positive score)
-        penalty_deduction = s_anomaly_penalty * self.global_weights.get("penalty_multiplier", 0.0)
-        final_score = float(max(0.0, positive_score - penalty_deduction))
+        # Apply negative penalty multiplier (using a multiplicative decay as recommended)
+        # A penalty_multiplier of 0.05 means a penalty of 10.0 reduces score by 50%.
+        penalty_decay = min(1.0, s_anomaly_penalty * self.global_weights.get("penalty_multiplier", 0.0))
+        final_score = float(max(0.0, positive_score * (1.0 - penalty_decay)))
 
         # Build component scores breakdown (critical for explainability/reasoning)
         component_breakdown = ComponentScores(
             experience_score=s_exp,
             skills_score=s_skills,
             jd_alignment_score=s_align,
+            semantic_alignment_score=s_semantic,
             behavioral_score=s_behavior,
             location_score=s_location,
             anomaly_penalty=s_anomaly_penalty

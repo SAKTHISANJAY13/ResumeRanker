@@ -1,18 +1,28 @@
-\"\"\"Reranking and sorting module for Stage-2 candidate selection.\"\"\"
+"""Reranking and sorting module for Stage-2 candidate selection."""
 
 from typing import List
 from src.utils.logger import Logger
 from src.common.score import CandidateScore
 
 class Reranker:
-    \"\"\"Performs stable, deterministic reranking and selects the top K candidates.\"\"\"
+    """Performs stable, deterministic reranking and selects the top K candidates."""
+
+    @staticmethod
+    def _get_sort_key(candidate: CandidateScore) -> tuple:
+        final_score = -candidate.final_score
+        behavioral_score = 0.0
+        experience_score = 0.0
+        if candidate.component_scores:
+            behavioral_score = -candidate.component_scores.behavioral_score
+            experience_score = -candidate.component_scores.experience_score
+        return (final_score, behavioral_score, experience_score, candidate.candidate_id)
 
     @staticmethod
     def rerank(
         candidate_scores: List[CandidateScore], 
         top_k: int = 5000
     ) -> List[CandidateScore]:
-        \"\"\"Sorts candidates descending by score and breaks ties deterministically.
+        """Sorts candidates descending by score and breaks ties deterministically.
         
         Args:
             candidate_scores: List of scored candidate entries.
@@ -20,19 +30,14 @@ class Reranker:
             
         Returns:
             The sorted and truncated list of CandidateScore objects.
-        \"\"\"
+        """
         if not candidate_scores:
             return []
 
         Logger.info(f"Reranking {len(candidate_scores)} candidates to select Top {top_k}...")
 
-        # Stable and deterministic sort:
-        # 1. Primary key: final_score descending (-x.final_score)
-        # 2. Secondary key (tie-breaker): candidate_id ascending (lexicographical)
-        sorted_candidates = sorted(
-            candidate_scores, 
-            key=lambda x: (-x.final_score, x.candidate_id)
-        )
+        # Stable and deterministic sort
+        sorted_candidates = sorted(candidate_scores, key=Reranker._get_sort_key)
 
         # Slice to retain top K
         selected_candidates = sorted_candidates[:top_k]

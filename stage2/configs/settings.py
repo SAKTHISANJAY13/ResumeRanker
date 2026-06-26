@@ -1,11 +1,11 @@
-\"\"\"Configuration settings for Stage-2 Reranking Pipeline.\"\"\"
+"""Configuration settings for Stage-2 Reranking Pipeline."""
 
 import os
 from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Stage2Settings:
-    \"\"\"Settings and constraints for the Stage-2 candidate reranking (20k -> 5k).\"\"\"
+    """Settings and constraints for the Stage-2 candidate reranking (20k -> 5k)."""
     
     # Paths
     PROJECT_ROOT: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

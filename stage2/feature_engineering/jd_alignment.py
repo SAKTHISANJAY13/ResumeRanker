@@ -1,9 +1,11 @@
-\"\"\"Job Description alignment feature engineering module for Stage-2 reranking.\"\"\"
+"""Job Description alignment feature engineering module for Stage-2 reranking."""
 
 import re
 from dataclasses import dataclass
 from typing import List, Dict, Set, Any, Optional
 from src.utils.logger import Logger
+from stage2.feature_engineering.base import BaseFeatureExtractor
+from stage2.feature_engineering.utils import extract_career_history
 
 # Try importing the Stage-2 configurations; fall back to defaults if not yet generated
 try:
@@ -70,7 +72,7 @@ DEFAULT_JOB_DURATION_MONTHS = 6.0
 
 @dataclass(frozen=True)
 class JdAlignmentFeatureResult:
-    \"\"\"Advanced semantic fit features computed against JD concepts.\"\"\"
+    """Advanced semantic fit features computed against JD concepts."""
     retrieval_fit: float
     ranking_fit: float
     vector_database_fit: float
@@ -81,8 +83,8 @@ class JdAlignmentFeatureResult:
     shipping_mindset_fit: float
 
 
-class JdAlignmentFeatureExtractor:
-    \"\"\"Extracts alignment metrics using term matches weighted by career duration.\"\"\"
+class JdAlignmentFeatureExtractor(BaseFeatureExtractor):
+    """Extracts alignment metrics using term matches weighted by career duration."""
 
     def __init__(self) -> None:
         # Precompile regex matches for optimal performance
@@ -96,7 +98,7 @@ class JdAlignmentFeatureExtractor:
         self.shipping_regex = self._compile_regex(SHIPPING_CONCEPT_WORDS)
 
     def _compile_regex(self, keywords: List[str]) -> re.Pattern:
-        \"\"\"Compiles case-insensitive word-boundary regex for a keyword list.\"\"\"
+        """Compiles case-insensitive word-boundary regex for a keyword list."""
         sorted_kws = sorted(keywords, key=len, reverse=True)
         pattern_str = r"\b(" + "|".join(re.escape(kw.lower()) for kw in sorted_kws) + r")\b"
         return re.compile(pattern_str, re.IGNORECASE)
@@ -107,7 +109,7 @@ class JdAlignmentFeatureExtractor:
         regex: re.Pattern, 
         check_startup_size: bool = False
     ) -> float:
-        \"\"\"Accumulates fit score based on presence of terms weighted by job duration.\"\"\"
+        """Accumulates fit score based on presence of terms weighted by job duration."""
         score = 0.0
 
         # 1. Headline & Summary matching
@@ -130,12 +132,7 @@ class JdAlignmentFeatureExtractor:
                 score += SKILL_WEIGHT
 
         # 3. Career history matching (weighted by duration in years)
-        experiences = None
-        for key in ("career_history", "experience", "experiences", "work_history"):
-            val = candidate.get(key)
-            if isinstance(val, list):
-                experiences = val
-                break
+        experiences = extract_career_history(candidate)
 
         if experiences:
             for exp in experiences:
@@ -171,7 +168,7 @@ class JdAlignmentFeatureExtractor:
         return float(score)
 
     def extract_features(self, candidate: Dict[str, Any]) -> JdAlignmentFeatureResult:
-        \"\"\"Extracts all JD alignment features for a candidate.\"\"\"
+        """Extracts all JD alignment features for a candidate."""
         candidate_id = candidate.get("candidate_id") or candidate.get("id") or "UNKNOWN"
         Logger.info(f"Extracting JD alignment features for candidate {candidate_id}")
 

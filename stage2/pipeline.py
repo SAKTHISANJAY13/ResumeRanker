@@ -1,4 +1,4 @@
-\"\"\"Stage-2 ranking pipeline orchestrator.\"\"\"
+"""Stage-2 ranking pipeline orchestrator."""
 
 import csv
 from typing import List, Set
@@ -13,14 +13,41 @@ from stage2.feature_engineering.location import LocationFeatureExtractor
 from stage2.feature_engineering.jd_alignment import JdAlignmentFeatureExtractor
 from stage2.feature_engineering.anomaly import AnomalyDetector
 from stage2.scoring.weighted_score import WeightedScorer
-from stage2.ranking.tie_breaker import TieBreaker
+from stage2.ranking.reranker import Reranker
+from stage2.semantic.semantic_matcher import SemanticMatcher
+from stage2.feature_engineering.utils import extract_career_history
+
+# Hardcoded JD text for semantic comparison (since python-docx is not universally available)
+JD_TEXT_CONSTANT = (
+    "Senior AI Engineer Retrieval and Ranking. We are looking for an experienced Applied Scientist "
+    "skilled in building production pipelines with Qdrant, sentence-transformers, dense retrieval, "
+    "ranking algorithms, A/B testing, and Python."
+)
+
+def _build_candidate_text(candidate: dict) -> str:
+    """Compiles candidate dictionary fields into a single string for semantic processing."""
+    cand_texts = []
+    cand_texts.append(candidate.get("profile", {}).get("headline", ""))
+    cand_texts.append(candidate.get("profile", {}).get("summary", ""))
+    
+    for exp in extract_career_history(candidate):
+        cand_texts.append(exp.get("title", ""))
+        cand_texts.append(exp.get("description", ""))
+        
+    for skill in candidate.get("skills", []):
+        if isinstance(skill, str):
+            cand_texts.append(skill)
+        elif isinstance(skill, dict):
+            cand_texts.append(skill.get("name", ""))
+            
+    return " ".join([t for t in cand_texts if t])
 
 def run_stage2_pipeline(
     stage1_csv_path: str = settings.INPUT_STAGE1_CSV,
     raw_data_path: str = settings.RAW_CANDIDATES_GZ,
     top_k: int = settings.STAGE2_OUTPUT_SIZE
 ) -> List[CandidateScore]:
-    \"\"\"Runs the complete Stage-2 Reranking Pipeline.
+    """Runs the complete Stage-2 Reranking Pipeline.
     
     Flow:
         1. Load candidate IDs from Stage-1 retrieval.
@@ -37,7 +64,7 @@ def run_stage2_pipeline(
         
     Returns:
         Ranked list of CandidateScore objects.
-    \"\"\"
+    """
     Logger.info("Initializing Stage-2 Reranking Pipeline components...")
     
     # 1. Load target candidate IDs from Stage-1 CSV
@@ -65,6 +92,15 @@ def run_stage2_pipeline(
     location_extractor = LocationFeatureExtractor()
     alignment_extractor = JdAlignmentFeatureExtractor()
     anomaly_detector = AnomalyDetector()
+    
+    # We load the semantic matcher here inside a try-except to avoid breaking if the env lacks sentence-transformers
+    semantic_matcher = None
+    try:
+        semantic_matcher = SemanticMatcher()
+        Logger.info("SemanticMatcher loaded successfully.")
+    except ImportError:
+        Logger.warning("sentence-transformers not installed. Semantic scores will default to 0.0.")
+        
     scorer = WeightedScorer()
 
     candidate_scores: List[CandidateScore] = []
@@ -95,6 +131,12 @@ def run_stage2_pipeline(
         align_res = alignment_extractor.extract_features(candidate)
         anomaly_res = anomaly_detector.extract_features(candidate)
 
+        # Compute semantic score explicitly
+        semantic_score = 0.0
+        if semantic_matcher is not None:
+            candidate_text = _build_candidate_text(candidate)
+            semantic_score = semantic_matcher.compute_similarity(JD_TEXT_CONSTANT, candidate_text)
+
         # Compute candidate final score and component breakdown
         score_obj = scorer.compute_candidate_score(
             candidate_id=cid,
@@ -103,7 +145,8 @@ def run_stage2_pipeline(
             align=align_res,
             behavior=behavior_res,
             location=location_res,
-            anomaly=anomaly_res
+            anomaly=anomaly_res,
+            semantic_score=semantic_score
         )
         candidate_scores.append(score_obj)
 
@@ -112,11 +155,8 @@ def run_stage2_pipeline(
 
     Logger.info(f"Completed scoring. Total matched and scored candidates: {len(candidate_scores)}")
 
-    # 4. Deterministic and stable sorting (tie-breaking hierarchy)
-    sorted_candidates = TieBreaker.sort_deterministically(candidate_scores)
-
-    # 5. Select top K candidates and assign rank indices
-    top_candidates = sorted_candidates[:top_k]
+    # 4 & 5. Deterministic reranking and selection of top K candidates
+    top_candidates = Reranker.rerank(candidate_scores, top_k)
     for rank_idx, candidate in enumerate(top_candidates, 1):
         candidate.rank = rank_idx
 

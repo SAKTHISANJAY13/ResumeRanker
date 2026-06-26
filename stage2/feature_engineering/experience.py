@@ -1,10 +1,12 @@
-\"\"\"Advanced experience feature engineering module for Stage-2 reranking.\"\"\"
+"""Advanced experience feature engineering module for Stage-2 reranking."""
 
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import List, Dict, Any, Tuple, Optional
 from src.utils.logger import Logger
+from stage2.feature_engineering.base import BaseFeatureExtractor
+from stage2.feature_engineering.utils import extract_career_history
 
 # Try importing the Stage-2 configurations; fall back to defaults if not yet generated
 try:
@@ -52,7 +54,7 @@ DAYS_PER_YEAR = 365.25
 
 @dataclass(frozen=True)
 class ExperienceFeatureResult:
-    \"\"\"Advanced experience metrics computed for a candidate profile.\"\"\"
+    """Advanced experience metrics computed for a candidate profile."""
     total_experience: float
     ai_experience: float
     product_company_experience: float
@@ -62,8 +64,8 @@ class ExperienceFeatureResult:
     recommendation_experience: float
 
 
-class ExperienceFeatureExtractor:
-    \"\"\"Extracts advanced experience features using date-interval merging to avoid overlap.\"\"\"
+class ExperienceFeatureExtractor(BaseFeatureExtractor):
+    """Extracts and scores candidate experience focusing on tenure and domain overlap."""
 
     def __init__(self) -> None:
         # Precompile regex matches for optimal performance
@@ -75,13 +77,13 @@ class ExperienceFeatureExtractor:
         self.product_companies = [pc.lower() for pc in PRODUCT_COMPANIES]
 
     def _compile_regex(self, keywords: List[str]) -> re.Pattern:
-        \"\"\"Compiles case-insensitive word-boundary regex for a keyword list.\"\"\"
+        """Compiles case-insensitive word-boundary regex for a keyword list."""
         sorted_kws = sorted(keywords, key=len, reverse=True)
         pattern_str = r"\b(" + "|".join(re.escape(kw.lower()) for kw in sorted_kws) + r")\b"
         return re.compile(pattern_str, re.IGNORECASE)
 
     def _parse_date(self, date_str: Any) -> Optional[date]:
-        \"\"\"Parses candidate career date strings into datetime.date objects.\"\"\"
+        """Parses candidate career date strings into datetime.date objects."""
         if not date_str:
             return None
         if isinstance(date_str, date):
@@ -107,7 +109,7 @@ class ExperienceFeatureExtractor:
         return None
 
     def _merge_intervals(self, intervals: List[Tuple[date, date]]) -> float:
-        \"\"\"Merges overlapping and adjacent date intervals to calculate unique years.\"\"\"
+        """Merges overlapping and adjacent date intervals to calculate unique years."""
         if not intervals:
             return 0.0
 
@@ -128,7 +130,7 @@ class ExperienceFeatureExtractor:
         return max(0.0, total_days / DAYS_PER_YEAR)
 
     def extract_features(self, candidate: Dict[str, Any]) -> ExperienceFeatureResult:
-        \"\"\"Extracts advanced experience features for a single candidate profile.\"\"\"
+        """Extracts advanced experience features for a single candidate profile."""
         candidate_id = candidate.get("candidate_id") or candidate.get("id") or "UNKNOWN"
         Logger.info(f"Extracting experience features for candidate {candidate_id}")
 
@@ -144,12 +146,7 @@ class ExperienceFeatureExtractor:
                     pass
 
         # Try to locate the career history
-        experiences = None
-        for key in ("career_history", "experience", "experiences", "work_history"):
-            val = candidate.get(key)
-            if isinstance(val, list):
-                experiences = val
-                break
+        experiences = extract_career_history(candidate)
 
         if not experiences:
             # Fall back to profile years if no history detail is available

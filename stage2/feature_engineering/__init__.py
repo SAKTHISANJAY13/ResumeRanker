@@ -1,1 +1,1 @@
-\"\"\"Feature engineering components for Stage-2.\"\"\"
+"""Feature engineering components for Stage-2."""

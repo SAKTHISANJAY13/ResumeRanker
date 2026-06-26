@@ -1,10 +1,12 @@
-\"\"\"Anomaly and risk feature engineering module for Stage-2 reranking.\"\"\"
+"""Anomaly and risk feature engineering module for Stage-2 reranking."""
 
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import List, Dict, Any, Tuple, Optional
 from src.utils.logger import Logger
+from stage2.feature_engineering.base import BaseFeatureExtractor
+from stage2.feature_engineering.utils import extract_career_history
 
 # Try importing the Stage-2 configurations; fall back to defaults if not yet generated
 try:
@@ -32,20 +34,20 @@ PROM_TIME_THRESHOLD_DAYS = 365
 
 @dataclass(frozen=True)
 class AnomalyFeatureResult:
-    \"\"\"Dataclass holding anomaly evaluation results for Stage-2 reranking.\"\"\"
+    """Dataclass holding anomaly evaluation results for Stage-2 reranking."""
     penalty_score: float
     evidence: List[str] = field(default_factory=list)
     confidence: float = 1.0  # Detection confidence (1.0 = highly confident, 0.0 = unsure)
 
 
-class AnomalyDetector:
-    \"\"\"Validates candidate profiles to detect inconsistencies, fake experience, and promotions.\"\"\"
+class AnomalyDetector(BaseFeatureExtractor):
+    """Detects timeline inconsistencies and potential resume fraud."""
 
     def __init__(self) -> None:
         self.penalties = ANOMALY_PENALTIES
 
     def _parse_date(self, date_str: Any) -> Optional[date]:
-        \"\"\"Parses candidate career date strings into datetime.date objects.\"\"\"
+        """Parses candidate career date strings into datetime.date objects."""
         if not date_str:
             return None
         if isinstance(date_str, date):
@@ -65,7 +67,7 @@ class AnomalyDetector:
         return None
 
     def extract_features(self, candidate: Dict[str, Any]) -> AnomalyFeatureResult:
-        \"\"\"Scans the candidate profile and computes risk metrics.\"\"\"
+        """Scans the candidate profile and computes risk metrics."""
         candidate_id = candidate.get("candidate_id") or candidate.get("id") or "UNKNOWN"
         Logger.info(f"Running anomaly detection for candidate {candidate_id}")
 
@@ -75,12 +77,7 @@ class AnomalyDetector:
         checks_succeeded = 0
 
         # Retrieve career history
-        experiences = None
-        for key in ("career_history", "experience", "experiences", "work_history"):
-            val = candidate.get(key)
-            if isinstance(val, list):
-                experiences = val
-                break
+        experiences = extract_career_history(candidate)
 
         # If career details are empty, we cannot execute timeline checks safely
         if not experiences:

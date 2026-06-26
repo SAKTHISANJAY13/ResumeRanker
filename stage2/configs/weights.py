@@ -34,9 +34,10 @@ USAGE: Import specific weight dictionaries or constants as needed:
 
 STAGE2_GLOBAL_WEIGHTS = {
     "experience": 0.25,           # Years in field, seniority, domain specialization
-    "skills": 0.30,               # Technical skill coverage and proficiency
-    "alignment": 0.20,            # Job description semantic fit
-    "behavior": 0.15,             # Activity signals, engagement, availability
+    "skills": 0.25,               # Technical skill coverage and proficiency
+    "alignment": 0.15,            # Job description keyword/concept fit
+    "semantic": 0.15,             # Dense vector semantic similarity fit
+    "behavior": 0.10,             # Activity signals, engagement, availability
     "location": 0.10,             # Geography, relocation, work mode compatibility
     "penalty_multiplier": 0.05    # Anomaly/fraud deduction factor
 }

@@ -2,7 +2,10 @@
 
 import sys
 import time
-import resource
+try:
+    import resource
+except ImportError:
+    resource = None
 from typing import Optional
 
 class Logger:
@@ -37,6 +40,8 @@ class Logger:
         
         Handles difference between Darwin (macOS - bytes) and Linux (kilobytes).
         """
+        if resource is None:
+            return 0.0
         usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
         if sys.platform == "darwin":
             return usage / (1024 * 1024)

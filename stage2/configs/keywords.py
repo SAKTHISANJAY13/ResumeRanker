@@ -87,7 +87,6 @@ SKILL_ALIASES = {
     "airflow": "production machine learning",
     
     # Python Ecosystem (Language)
-    "python": "python",
     "py": "python",
     
     # Evaluation & Metrics
